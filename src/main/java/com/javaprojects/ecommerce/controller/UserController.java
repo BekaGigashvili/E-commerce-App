@@ -4,7 +4,9 @@ import com.javaprojects.ecommerce.model.LoginRequest;
 import com.javaprojects.ecommerce.model.RegistrationRequest;
 import com.javaprojects.ecommerce.service.UserService;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
@@ -26,5 +28,13 @@ public class UserController {
     @PostMapping("/auth/login")
     public String login(@RequestBody LoginRequest request){
         return userService.login(request);
+    }
+    @PostMapping("/auth/logout")
+    public ResponseEntity<String> logout(HttpServletRequest request){
+        return userService.logout(request);
+    }
+    @PostMapping("/hello")
+    public String hello(){
+        return "Hello!";
     }
 }
