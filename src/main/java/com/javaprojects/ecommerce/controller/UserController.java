@@ -1,7 +1,7 @@
 package com.javaprojects.ecommerce.controller;
 
+import com.javaprojects.ecommerce.model.LoginRequest;
 import com.javaprojects.ecommerce.model.RegistrationRequest;
-import com.javaprojects.ecommerce.model.User;
 import com.javaprojects.ecommerce.service.UserService;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
@@ -22,5 +22,9 @@ public class UserController {
     @GetMapping("/verify")
     public String verifyAccount(@RequestParam("token") String token){
         return userService.verify(token);
+    }
+    @PostMapping("/auth/login")
+    public String login(@RequestBody LoginRequest request){
+        return userService.login(request);
     }
 }
