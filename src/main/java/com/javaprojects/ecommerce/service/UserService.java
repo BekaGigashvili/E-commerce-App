@@ -1,0 +1,71 @@
+package com.javaprojects.ecommerce.service;
+
+import com.javaprojects.ecommerce.model.ConfirmationToken;
+import com.javaprojects.ecommerce.model.RegistrationRequest;
+import com.javaprojects.ecommerce.model.User;
+import com.javaprojects.ecommerce.repository.ConfirmationTokenRepository;
+import com.javaprojects.ecommerce.repository.UserRepository;
+import jakarta.mail.MessagingException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.nio.file.AccessDeniedException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+    private final ConfirmationTokenRepository confirmationTokenRepository;
+    private final MailService mailService;
+    private final PasswordEncoder passwordEncoder;
+
+    @Transactional
+    public String register(RegistrationRequest request) throws AccessDeniedException, MessagingException {
+        String email = request.getEmail();
+        if(userRepository.existsByEmail(email)){
+            User existingUser = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found!"));
+            if(existingUser.isEnabled()){
+                throw new AccessDeniedException("User already exists!");
+            } else if(existingUser.getToken().getExpiresAt().isBefore(LocalDateTime.now())){
+                confirmationTokenRepository.delete(existingUser.getToken());
+                String token = UUID.randomUUID().toString();
+                ConfirmationToken confirmationToken = new ConfirmationToken(token, existingUser);
+                existingUser.setToken(confirmationToken);
+                userRepository.save(existingUser);
+                mailService.sendConfirmationEmail(token, existingUser.getEmail());
+                return "A new verification email has been sent.";
+            }
+            return "Please check your email for verification.";
+        }
+        User user = new User();
+        user.setEmail(email);
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEnabled(false);
+
+        String token = UUID.randomUUID().toString();
+        ConfirmationToken confirmationToken = new ConfirmationToken(token, user);
+
+        user.setToken(confirmationToken);
+        userRepository.save(user);
+        mailService.sendConfirmationEmail(token, user.getEmail());
+        return "Verification email sent!";
+    }
+    @Transactional
+    public String verify(String token){
+        ConfirmationToken confirmationToken = confirmationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Token not found"));
+        User user = confirmationToken.getUser();
+        user.setEnabled(true);
+        userRepository.save(user);
+        confirmationTokenRepository.delete(user.getToken());
+        return "Your account has been verified!";
+    }
+}
