@@ -1,8 +1,6 @@
 package com.javaprojects.ecommerce.service;
 
-import com.javaprojects.ecommerce.model.ConfirmationToken;
-import com.javaprojects.ecommerce.model.RegistrationRequest;
-import com.javaprojects.ecommerce.model.User;
+import com.javaprojects.ecommerce.model.*;
 import com.javaprojects.ecommerce.repository.ConfirmationTokenRepository;
 import com.javaprojects.ecommerce.repository.UserRepository;
 import jakarta.mail.MessagingException;
@@ -23,6 +21,7 @@ public class UserService {
     private final ConfirmationTokenRepository confirmationTokenRepository;
     private final MailService mailService;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     @Transactional
     public String register(RegistrationRequest request) throws AccessDeniedException, MessagingException {
@@ -48,6 +47,7 @@ public class UserService {
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(Role.USER);
         user.setEnabled(false);
 
         String token = UUID.randomUUID().toString();
@@ -67,5 +67,14 @@ public class UserService {
         userRepository.save(user);
         confirmationTokenRepository.delete(user.getToken());
         return "Your account has been verified!";
+    }
+
+    public String login(LoginRequest request){
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(()-> new RuntimeException("User not found!"));
+        if(!passwordEncoder.matches(request.getPassword(), user.getPassword())){
+            throw new RuntimeException("Incorrect password!");
+        }
+        return jwtService.generateToken(user.getEmail());
     }
 }
