@@ -1,15 +1,19 @@
 package com.javaprojects.ecommerce.service;
 
 import com.javaprojects.ecommerce.model.*;
+import com.javaprojects.ecommerce.repository.BlacklistedTokenRepository;
 import com.javaprojects.ecommerce.repository.ConfirmationTokenRepository;
 import com.javaprojects.ecommerce.repository.UserRepository;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.AccessDeniedException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +26,7 @@ public class UserService {
     private final MailService mailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final BlacklistedTokenRepository blacklistedTokenRepository;
 
     @Transactional
     public String register(RegistrationRequest request) throws AccessDeniedException, MessagingException {
@@ -76,5 +81,26 @@ public class UserService {
             throw new RuntimeException("Incorrect password!");
         }
         return jwtService.generateToken(user.getEmail());
+    }
+
+    @Transactional
+    public ResponseEntity<String> logout(HttpServletRequest request){
+        String header = request.getHeader("Authorization");
+
+        if(header == null || !header.startsWith("Bearer ")){
+            return ResponseEntity.badRequest().body("Invalid token");
+        }
+
+        String token = header.substring(7);
+
+        if(!blacklistedTokenRepository.existsByToken(token)){
+            blacklistedTokenRepository.save(
+                    BlacklistedToken.builder()
+                            .token(token)
+                            .blacklistedAt(Instant.now())
+                            .build()
+            );
+        }
+        return ResponseEntity.ok().body("Successfully logged out");
     }
 }
