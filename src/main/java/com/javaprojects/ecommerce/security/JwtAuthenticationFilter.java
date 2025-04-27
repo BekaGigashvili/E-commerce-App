@@ -1,5 +1,6 @@
 package com.javaprojects.ecommerce.security;
 
+import com.javaprojects.ecommerce.repository.BlacklistedTokenRepository;
 import com.javaprojects.ecommerce.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,6 +22,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final BlacklistedTokenRepository blacklistedTokenRepository;
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -32,6 +34,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             token = header.substring(7);
             email = jwtService.extractEmail(token);
+        }
+
+        if(blacklistedTokenRepository.existsByToken(token)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token is blacklisted");
+            return;
         }
 
         if(email != null && SecurityContextHolder.getContext().getAuthentication() == null){
