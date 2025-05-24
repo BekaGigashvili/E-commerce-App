@@ -27,7 +27,11 @@ public class SecurityConfig {
                         .cors(cors -> {})
                         .csrf(AbstractHttpConfigurer::disable)
                         .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                                .requestMatchers("/user/auth/**", "/user/verify/**", "/product/categories").permitAll()
+                                .requestMatchers(
+                                        "/user/auth/**",
+                                        "/user/verify/**",
+                                        "/product/categories",
+                                        "/product").permitAll()
                                 .anyRequest().authenticated()
                         )
                         .sessionManagement(
